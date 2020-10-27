@@ -16,11 +16,12 @@ def read_data(isProcessed = False):
         for f in f_names:
             filename = f.rsplit('.', 1)[0]
             dic_csv[path.join(root, f)] = ('processed_' + filename) if isProcessed else filename
-
+    return dic_csv
 
 def make_dataframe(dic):
     for key in dic:
         df_var[dic[key]] = pd.read_csv(key, delimiter=";")
+    return df_var
 
 def separate(df, column):
     list = df[column].unique().tolist()
