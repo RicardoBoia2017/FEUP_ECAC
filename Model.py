@@ -1,7 +1,7 @@
 import pandas as pd
 import sklearn as sk
 import seaborn as sns
-import numpuy as np
+import numpy as np
 
 global models_mean_scores
 models_mean_scores = pd.DataFrame()

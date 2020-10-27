@@ -8,10 +8,11 @@ from datetime import date
 
 # Read csv
 
-dic_csv = {}
-df_var = {}
+#dic_csv = {}
+#df_var = {}
 
 def read_data(isProcessed = False):
+    dic_csv = {}
     for root,d_names,f_names in walk("./data/"):
         for f in f_names:
             filename = f.rsplit('.', 1)[0]
@@ -19,6 +20,7 @@ def read_data(isProcessed = False):
     return dic_csv
 
 def make_dataframe(dic):
+    df_var = {}
     for key in dic:
         df_var[dic[key]] = pd.read_csv(key, delimiter=";")
     return df_var
@@ -30,7 +32,7 @@ def separate(df, column):
         dic[l] = df[df[column]==l]
     return dic
 
-def concat_train_test(dic):
+def concat_train_test(dic, df):
     lis = [d for d in list(dic.values()) if ('test' in d or 'train' in d)]
     train = []
     test = []
@@ -47,7 +49,8 @@ def concat_train_test(dic):
         t1 = [d for d in train if n in d][0]
         t2 = [d for d in test if n in d][0]
         
-        df_var[n] = pd.concat([df_var[t1],df_var[t2]])
+        df[n] = pd.concat([df[t1],df[t2]])
+    
 
 def getDate(d):
     year = 1900+int(str(d)[0:2])
@@ -57,6 +60,10 @@ def getDate(d):
     day = int(str(d)[4:6])
     return {'year': year, 'month': month, 'day': day, 'gender': gender}
 
+def transformDate(d):
+    d = getDate(d)
+    return str(d['year'])+'-'+str(d['month'])+'-'+str(d['day'])
+    
 def getGender(df):
     list = []
     for row in df.itertuples(index = True):
@@ -109,7 +116,7 @@ def n_withdrawal(col):
 
 # Merging Information
 
-def Merge():
+def Merge(df_var, haveCategorical = False):
     # Copying information from dictonary into dataframes
 
     client = df_var['client'].copy()
@@ -164,7 +171,7 @@ def Merge():
 
     # Group by operation
 
-    l = loan_info.groupby(by = cols, as_index = False).agg({
+    loans = loan_info.groupby(by = cols, as_index = False).agg({
                         'trans_date': ['min', 'max'],
                         'trans_amount': ['min', 'max', 'mean', 'std', 'last'],
                         'trans_balance': ['min', 'max', 'mean', 'std', 'last'],
@@ -175,8 +182,15 @@ def Merge():
                     })
 
     #Change columns name 
-    l.columns = ['%s%s' % (level1, '_%s' % level2 if level2 else '') for level1, level2 in l.columns]
-    return l
+    loans.columns = ['%s%s' % (level1, '_%s' % level2 if level2 else '') for level1, level2 in loans.columns]
+    categoricalDates = ['loan_date', 'trans_date_min', 'trans_date_max', 'birth_number', 'account_date',]
+    if (haveCategorical):
+        for catDate in categoricalDates:
+            loans[catDate] = loans[catDate].apply(transformDate)
+        loans.loc[loans['status']  == 1, 'status'] = 'Successful' 
+        loans.loc[loans['status']  == -1, 'status'] = 'Unsuccessful' 
+     
+    return loans
 
 def save_csv(df):
     df.sort_values(by = ['loan_id'])
