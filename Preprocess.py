@@ -187,6 +187,7 @@ def Merge(df_var, haveCategorical = False):
     if (haveCategorical):
         for catDate in categoricalDates:
             loans[catDate] = loans[catDate].apply(transformDate)
+            loans[catDate] = pd.to_datetime(loans[catDate])
         loans.loc[loans['status']  == 1, 'status'] = 'Successful' 
         loans.loc[loans['status']  == -1, 'status'] = 'Unsuccessful' 
      
