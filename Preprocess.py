@@ -186,8 +186,7 @@ def Merge(df_var, haveCategorical = False):
     categoricalDates = ['loan_date', 'trans_date_min', 'trans_date_max', 'birth_number', 'account_date',]
     if (haveCategorical):
         for catDate in categoricalDates:
-            loans[catDate] = loans[catDate].apply(transformDate)
-            loans[catDate] = pd.to_datetime(loans[catDate])
+            loans = df_transformDate(loans, catDate)
         loans.loc[loans['status']  == 1, 'status'] = 'Successful' 
         loans.loc[loans['status']  == -1, 'status'] = 'Unsuccessful' 
      
@@ -197,11 +196,11 @@ def save_csv(df):
     df.sort_values(by = ['loan_id'])
     df.to_csv('loan_info')
 
-def getCorr(df, size=(11,9)):
-    corr = df.corr()
-    ax = plt.subplots(figsize=size)
-    ax = sns.heatmap(corr,  annot = True, linewidths=.1, mask = np.triu(corr), cmap='coolwarm')
-
 def checkUniqueCategoricalVars():
     for f in CSV_files:
         print("{}:\n {}\n\n".format(f, CSV_files[f].select_dtypes(include=['object']).nunique()))
+
+def df_transformDate(df, dt):
+    df[dt] = df[dt].apply(transformDate)
+    df[dt] = pd.to_datetime(df[dt])
+    return df
