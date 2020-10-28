@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import warnings
 import seaborn as sns
+from Preprocess import *
 
 def loan_per_year(df, isMerged = True):
     if isMerged:
