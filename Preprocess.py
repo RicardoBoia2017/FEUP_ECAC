@@ -63,7 +63,15 @@ def getDate(d):
 def transformDate(d):
     d = getDate(d)
     return str(d['year'])+'-'+str(d['month'])+'-'+str(d['day'])
-    
+
+def getAge(df):
+    list = []
+    for row in df.itertuples(index = True):
+        d = getDate(row.birth_number)
+        birth_number = row.birth_number 
+        list.append([row.client_id, 1999-d['year']])
+    return pd.DataFrame(list, columns=['client_id', 'age'])
+
 def getGender(df):
     list = []
     for row in df.itertuples(index = True):
@@ -72,7 +80,6 @@ def getGender(df):
         if (d['gender'] == 'F'):
             birth_number -= 5000
         list.append([row.client_id, birth_number, d['gender'], row.district_id])
-    
     return pd.DataFrame(list, columns=['client_id', 'birth_number', 'gender', 'district_id'])
 
 def getColumns(df):
