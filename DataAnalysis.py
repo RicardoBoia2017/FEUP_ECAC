@@ -31,12 +31,16 @@ def histDf(df_years):
     for year in df_years:
         print("\n\nLoans of the year {}".format(year))
         df = df_years[year]
+        df['month'] = df['date'].dt.month_name().str.slice(stop=3)
         loans_succ = df[df['status']==1]
         loans_unsucc = df[df['status']==-1]
-        features = ['date','amount', 'duration', 'payments']
+        
+        features = ['month','amount', 'duration', 'payments']
+        bins = {'month': 13, 'amount': 20, 'duration': 10, 'payments': 20}
+        
         for f in features:
             fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
-            loans_succ[f].hist(bins=20, ax=ax1, label='sucessful', color='green', alpha=0.6)
-            loans_unsucc[f].hist(bins=20, ax=ax2, label='unsucessful', color='red', alpha=0.6)
+            loans_succ[f].hist(bins=bins[f], ax=ax1, label='sucessful', color='green', alpha=0.6)
+            loans_unsucc[f].hist(bins=bins[f], ax=ax2, label='unsucessful', color='red', alpha=0.6)
             plt.show()
         print()

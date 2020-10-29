@@ -204,3 +204,10 @@ def df_transformDate(df, dt):
     df[dt] = df[dt].apply(transformDate)
     df[dt] = pd.to_datetime(df[dt])
     return df
+
+def numerical_transformation(df):
+    feature = {}
+    for f in df:
+        if (df[f].dtype != 'float64') and (df[f].dtype != 'int64'):
+            df[f] = [list(df[f].unique()).index(item) for item in df[f]]
+    return df

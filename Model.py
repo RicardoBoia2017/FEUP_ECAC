@@ -85,3 +85,25 @@ def ClassifierDecisionTree(X, y, X_test):
     #df_pred = pd.DataFrame(data={'Id': X_test_owner["loan_id"], 'Predicted': y_test_cart})
     #df_pred.to_csv('loan_pred_3.csv', index=False)
     y_test_cart
+
+from sklearn.metrics import classification_report,confusion_matrix
+
+def model_year(train, test):
+    
+    train = numerical_transformation(train)
+    test = numerical_transformation(test)
+    
+    X_train = train.drop(columns=['status'], axis=1)
+    y_train = train['status'].copy()
+    X_test = test.drop(['status', axis=1)
+    y_test = test['status'].copy()
+
+    dtc = DecisionTreeClassifier()
+    dtc.fit(X_train, y_train)
+
+
+    dtc_pred = dtc.predict(X_test)
+    cr = classification_report(y_test,dtc_pred)
+    cm = confusion_matrix(y_test, dtc_pred)
+    print(cr)
+    print(cm)
