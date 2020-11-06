@@ -50,7 +50,7 @@ def concat_train_test(dic, df):
         t2 = [d for d in test if n in d][0]
         
         df[n] = pd.concat([df[t1],df[t2]])
-    
+ 
 
 def getDate(d):
     year = 1900+int(str(d)[0:2])
@@ -126,7 +126,7 @@ def n_withdrawal(col):
 def Merge(df_var, haveCategorical = False):
     # Copying information from dictonary into dataframes
 
-    client = df_var['client'].copy()
+    client = getGender(df_var['client']).copy()
     disp = df_var['disp'].copy()
     card = df_var['card'].copy()
     loan = df_var['loan'].copy()
@@ -212,9 +212,40 @@ def df_transformDate(df, dt):
     df[dt] = pd.to_datetime(df[dt])
     return df
 
-def numerical_transformation(df):
-    feature = {}
-    for f in df:
-        if (df[f].dtype != 'float64') and (df[f].dtype != 'int64'):
-            df[f] = [list(df[f].unique()).index(item) for item in df[f]]
+def transform_to_float(df):
+    columns_str_to_float = ["unemploymant rate '95 ", "no. of commited crimes '95 "]
+    for column in df.columns:
+        if column in columns_str_to_float:
+            df.loc[df[column]  == '?', column] = -1 
+            df[column] = list(map(float, df[column]))
     return df
+
+def handle_non_numeric_data(df):
+    df = transform_to_float(df)
+    columns = df.columns.values
+
+    for column in columns:
+        text_digit_vals = {}
+        
+        def convert_to_int(val):
+            return text_digit_vals[val]
+        
+        if df[column].dtype != np.int64 and df[column].dtype != np.float64 and not column == 'status':
+            column_contents = df[column].values.tolist()
+            unique_elements = set(column_contents)
+            x = 0
+            
+            for unique in unique_elements:
+                if unique not in text_digit_vals:
+                    text_digit_vals[unique] = x
+                    x+=1
+            
+            df[column] = list(map(convert_to_int, df[column]))
+    return df
+
+def normalize_columns(df, columns):
+    for col in columns:
+        col_min = df[col].min()
+        col_max =  df[col].max()
+        
+        df[col] = (df[col] - col_min)/(col_max - col_min)

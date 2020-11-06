@@ -6,13 +6,22 @@ import numpy as np
 global models_mean_scores
 models_mean_scores = pd.DataFrame()
 
-from sklearn.model_selection import RandomizedSearchCV, KFold, cross_validate
+from sklearn.model_selection import RandomizedSearchCV, KFold, cross_validate, StratifiedKFold, GridSearchCV
+from sklearn import metrics
+from imblearn.pipeline import Pipeline
+from imblearn.over_sampling import SMOTE
+from imblearn.under_sampling import NeighbourhoodCleaningRule
+
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import GradientBoostingClassifier
+
+SEED = 42
 
 def cross_validationScores(modelName, model, X, y, n_folds=10):
     metrics = {'MAE': 'neg_mean_absolute_error', 
                'RMSE': 'neg_root_mean_squared_error'}
     
-    kfold = KFold(n_splits=n_folds, shuffle=True, random_state=0)
+    kfold = KFold(n_splits=n_folds, shuffle=True, random_state=SEED)
     scores = cross_validate(model, X, y, cv=kfold, scoring=metrics, n_jobs=-1)
 
     # multiply by -1 because sklearn scoring metrics are negative
@@ -37,73 +46,93 @@ def metric_comparison(title, metric, ax):
     ax.set_title(title)
     sns.barplot(x = models_mean_scores.index, y = models_mean_scores[metric], ax=ax)
 
-def find_best_params_kfold(model, X, y, param_grid, n_iter=10, n_splits=3):  
+def find_best_params_kfold(model, X, y, param_grid, n_iter=10, n_splits=3, debug = True):  
     
-    kfold = KFold(n_splits=n_splits, shuffle=True, random_state=0)
+    kfold = KFold(n_splits=n_splits, shuffle=True, random_state=SEED)
     
+    search = GridSearchCV(estimator = model, param_grid = param_grid, scoring = metrics.make_scorer(auc_scorer, greater_is_better=True), n_jobs=-1, cv=kfold, verbose=2)
     
-    search = RandomizedSearchCV(model, param_grid, scoring="neg_mean_absolute_error", n_jobs=-1, n_iter=n_iter, cv=kfold, verbose=0, random_state=0)
+    result = search.fit(X, y.astype(int))
+    if debug:
+        print('Best Score: {}'.format(result.best_score_))
+        print('Best Parameters: {}'.format(result.best_params_))    
+    return (result.best_score_, result.best_params_)
+
+def auc_scorer(y_true, y_pred):
+    fpr, tpr, _ = metrics.roc_curve(y_true, y_pred)
+    return metrics.auc(fpr, tpr)
+
+def apply_sampling(alg):
+    return Pipeline([
+                ('sampling', SMOTE(k_neighbors = 3, random_state = SEED)),
+                ('classification', alg)
+            ])
+        
+
+def ClassifierDecisionTree(X, y):  
+
+    max_depth = [2, 4, 6, 8, 10]
+    min_samples_split = [2, 4, 6]
+    criterion = ['gini', 'entropy']
+    splitter = ['best']
+    max_features = ['auto', 'sqrt']
+    class_weight = ['balanced', None]
+    min_impurity_split = [0.05, 0.1, 0.23, 0.3]
+    min_samples_leaf =  [1, 2, 4, 6]
+
     
-    result = search.fit(X, y)
-    
-    return result.cv_results_
 
-def report(results, n_top=3):
-    res = []
-    res_i = 0
-    for i in range(1, n_top + 1):
-        candidates = np.flatnonzero(results['rank_test_score'] == i)
-        for candidate in candidates:
-            res.append([np.multiply(results['mean_test_score'][candidate], -1), 
-                        results['std_test_score'][candidate]])
-            for key in results['params'][candidate].keys():
-                res[res_i].append(results['params'][candidate][key])
-            res_i+=1
-    
-    columns = ['Mean absolute error', 'std'] + list(results['params'][candidate].keys())
-    return pd.DataFrame(res, columns=columns)
+    param_grid = dict(classification__max_depth=max_depth, classification__min_samples_split=min_samples_split, classification__criterion=criterion, classification__splitter=splitter, classification__max_features=max_features, classification__class_weight=class_weight, classification__min_impurity_split=min_impurity_split, classification__min_samples_leaf=min_samples_leaf)
 
-from sklearn.tree import DecisionTreeClassifier
-def ClassifierDecisionTree(X, y, X_test):  
+    dt = apply_sampling(DecisionTreeClassifier(random_state=SEED))
+    best_score, best_params = find_best_params_kfold(dt, X, y, param_grid, n_iter=50, n_splits=10)
+    return best_score, best_params, cv_results
 
-    max_depth = range(2, 30, 1)
-    min_samples_split = range(1, 10, 1)
+    #classifier_cart = DecisionTreeClassifier(max_depth=2, min_samples_split=9, random_state=SEED)
+    #classifier_cart = classifier_cart.fit(X, y)
 
-    param_grid = dict(max_depth=max_depth, min_samples_split=min_samples_split)
-
-    find_best_params_kfold(DecisionTreeClassifier(random_state=0), X, y, param_grid, n_iter=50, n_splits=10)
-
-    classifier_cart = DecisionTreeClassifier(max_depth=2, min_samples_split=9, random_state=0)
-    classifier_cart = classifier_cart.fit(X, y)
-
-    y_test_cart = classifier_cart.predict(X_test)
+    #y_test_cart = classifier_cart.predict(X_test)
 
     #df_pred = pd.DataFrame(data={'Id': X_test["loan_id"], 'Predicted': y_test_cart})
     #df_pred.to_csv('loan_pred_1.csv', index=False)
 
-    y_test_cart = classifier_cart.predict(X_test)
+    #y_test_cart = classifier_cart.predict(X_test)
     #df_pred = pd.DataFrame(data={'Id': X_test_owner["loan_id"], 'Predicted': y_test_cart})
     #df_pred.to_csv('loan_pred_3.csv', index=False)
-    y_test_cart
+    #y_test_cartf
 
-from sklearn.metrics import classification_report,confusion_matrix
+def ClassifierGradientBoosting(X, y):
+    loss = ['deviance', 'exponencial']
+    learning_rate = [0.1, 0.2, 0.4, 0.6]
+    n_estimators = [100, 150, 200]
+    subsample = [1, 0.5, 1.5, 2]
+    criterion = ['friedman_mse', 'mse', 'mae']
+    min_samples_split = [2, 4, 6]
+    min_samples_leaf =  [1, 2, 4, 6]
+    min_weight_fraction_leaf = [0, 1, 2, 3]
+    max_depth = [2, 3, 4, 6]
+    max_features = ['auto', 'sqrt']
+    min_impurity_split = [0.05, 0.1, 0.23, 0.3]
 
-def model_year(train, test):
+    param_grid = dict(classification__max_depth=max_depth, classification__min_samples_split=min_samples_split, classification__criterion=criterion, classification__loss=loss, classification__max_features=max_features, classification__learning_rate=learning_rate, classification__min_impurity_split=min_impurity_split, classification__min_samples_leaf=min_samples_leaf, classification__n_estimators=n_estimators, classification__subsample=subsample, classification__min_weight_fraction_leaf = min_weight_fraction_leaf)
+
+    gb = apply_sampling(GradientBoostingClassifier(random_state=SEED))
+    best_score, best_params = find_best_params_kfold(gb, X, y, param_grid, n_iter=50, n_splits=10)
+    return best_score, best_params
+
+# def model_year(train, test):
     
-    train = numerical_transformation(train)
-    test = numerical_transformation(test)
-    
-    X_train = train.drop(columns=['status'], axis=1)
-    y_train = train['status'].copy()
-    X_test = test.drop(['status', axis=1)
-    y_test = test['status'].copy()
+#     X_train = train.drop(columns=['status'], axis=1)
+#     y_train = train['status'].copy()
+#     X_test = test.drop(['status'], axis=1)
+#     y_test = test['status'].copy()
 
-    dtc = DecisionTreeClassifier()
-    dtc.fit(X_train, y_train)
+#     dtc = DecisionTreeClassifier()
+#     dtc.fit(X_train, y_train.astype(int))
 
 
-    dtc_pred = dtc.predict(X_test)
-    cr = classification_report(y_test,dtc_pred)
-    cm = confusion_matrix(y_test, dtc_pred)
-    print(cr)
-    print(cm)
+#     dtc_pred = dtc.predict(X_test)
+#     cr = classification_report(y_test,dtc_pred)
+#     cm = confusion_matrix(y_test, dtc_pred)
+#     print(cr)
+#     print(cm)
