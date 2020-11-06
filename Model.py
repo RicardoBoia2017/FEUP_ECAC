@@ -86,7 +86,7 @@ def ClassifierDecisionTree(X, y):
 
     dt = apply_sampling(DecisionTreeClassifier(random_state=SEED))
     best_score, best_params = find_best_params_kfold(dt, X, y, param_grid, n_iter=50, n_splits=10)
-    return best_score, best_params, cv_results
+    return best_score, best_params
 
     #classifier_cart = DecisionTreeClassifier(max_depth=2, min_samples_split=9, random_state=SEED)
     #classifier_cart = classifier_cart.fit(X, y)
