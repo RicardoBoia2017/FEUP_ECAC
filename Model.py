@@ -17,31 +17,6 @@ from sklearn.ensemble import GradientBoostingClassifier
 
 SEED = 42
 
-def cross_validationScores(modelName, model, X, y, n_folds=10):
-    metrics = {'MAE': 'neg_mean_absolute_error', 
-               'RMSE': 'neg_root_mean_squared_error'}
-    
-    kfold = KFold(n_splits=n_folds, shuffle=True, random_state=SEED)
-    scores = cross_validate(model, X, y, cv=kfold, scoring=metrics, n_jobs=-1)
-
-    # multiply by -1 because sklearn scoring metrics are negative
-    mean_mae_score = np.multiply(scores['test_MAE'], -1).mean()
-    std_mae_score = np.multiply(scores['test_MAE'], -1).std()
-    mean_rmse_score = np.multiply(scores['test_RMSE'], -1).mean()
-    std_rmse_score = np.multiply(scores['test_RMSE'], -1).std()
-
-    model_score = pd.DataFrame([[mean_mae_score, mean_rmse_score]], 
-                             columns=['MAE', 'RMSE'], index=[modelName])
-    global models_mean_scores
-    models_mean_scores = models_mean_scores.append(model_score)
-
-    print(str(n_folds) + " fold Cross validation scores for " + modelName)
-    score_df = pd.DataFrame([[mean_mae_score, std_mae_score], 
-                                  [mean_rmse_score, std_rmse_score]], 
-                                 columns=['Mean score', 'std'], 
-                                 index=['MAE', 'RMSE'])
-    return score_df
-
 def metric_comparison(title, metric, ax):
     ax.set_title(title)
     sns.barplot(x = models_mean_scores.index, y = models_mean_scores[metric], ax=ax)
@@ -50,7 +25,7 @@ def find_best_params_kfold(model, X, y, param_grid, n_iter=10, n_splits=3, debug
     
     kfold = KFold(n_splits=n_splits, shuffle=True, random_state=SEED)
     
-    search = GridSearchCV(estimator = model, param_grid = param_grid, scoring = metrics.make_scorer(auc_scorer, greater_is_better=True), n_jobs=-1, cv=kfold, verbose=2)
+    search = GridSearchCV(estimator = model, param_grid = param_grid, scoring = metrics.make_scorer(auc_score, greater_is_better=True), n_jobs=-1, cv=kfold, verbose=2)
     
     result = search.fit(X, y.astype(int))
     if debug:
@@ -58,7 +33,7 @@ def find_best_params_kfold(model, X, y, param_grid, n_iter=10, n_splits=3, debug
         print('Best Parameters: {}'.format(result.best_params_))    
     return (result.best_score_, result.best_params_)
 
-def auc_scorer(y_true, y_pred):
+def auc_score(y_true, y_pred):
     fpr, tpr, _ = metrics.roc_curve(y_true, y_pred)
     return metrics.auc(fpr, tpr)
 
@@ -88,18 +63,6 @@ def ClassifierDecisionTree(X, y):
     best_score, best_params = find_best_params_kfold(dt, X, y, param_grid, n_iter=50, n_splits=10)
     return best_score, best_params
 
-    #classifier_cart = DecisionTreeClassifier(max_depth=2, min_samples_split=9, random_state=SEED)
-    #classifier_cart = classifier_cart.fit(X, y)
-
-    #y_test_cart = classifier_cart.predict(X_test)
-
-    #df_pred = pd.DataFrame(data={'Id': X_test["loan_id"], 'Predicted': y_test_cart})
-    #df_pred.to_csv('loan_pred_1.csv', index=False)
-
-    #y_test_cart = classifier_cart.predict(X_test)
-    #df_pred = pd.DataFrame(data={'Id': X_test_owner["loan_id"], 'Predicted': y_test_cart})
-    #df_pred.to_csv('loan_pred_3.csv', index=False)
-    #y_test_cartf
 
 def ClassifierGradientBoosting(X, y):
     loss = ['deviance', 'exponencial']
@@ -120,19 +83,16 @@ def ClassifierGradientBoosting(X, y):
     best_score, best_params = find_best_params_kfold(gb, X, y, param_grid, n_iter=50, n_splits=10)
     return best_score, best_params
 
-# def model_year(train, test):
-    
-#     X_train = train.drop(columns=['status'], axis=1)
-#     y_train = train['status'].copy()
-#     X_test = test.drop(['status'], axis=1)
-#     y_test = test['status'].copy()
 
-#     dtc = DecisionTreeClassifier()
-#     dtc.fit(X_train, y_train.astype(int))
+def accuracy(tp,tn,fp,fn):
+    return (tp + tn)/(tp+tn+fp+fn)
 
+def precision(tp,fp):
+    return tp/(tp+fp)
 
-#     dtc_pred = dtc.predict(X_test)
-#     cr = classification_report(y_test,dtc_pred)
-#     cm = confusion_matrix(y_test, dtc_pred)
-#     print(cr)
-#     print(cm)
+def recall(tp,fn):
+    return tp/(tp+fn)
+
+def f1score(tp,fp,fn):
+    return 2*recall(tp,fn)/(recall(tp,fn)+precision(tp,fp))
+

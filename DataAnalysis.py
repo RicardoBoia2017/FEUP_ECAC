@@ -96,3 +96,18 @@ def execFinding():
     main_finding3(df_var['client'])
 
     main_finding4(pd.merge(df_var['client'], df_var['district'], left_on = 'district_id', right_on='code'))
+
+
+def plot_roc_auc(fpr, tpr, roc_auc):
+    '''Plot the ROC-AUC cplot_roc_aucurve'''
+    fig, ax = plt.subplots()
+    plt.title('Receiver Operating Characteristic (ROC)')
+    plt.plot(fpr, tpr, 'b', label = 'AUC = %0.2f' % roc_auc)
+    plt.legend(loc = 'lower right')
+    plt.plot([0, 1], [0, 1],'w--')
+    plt.xlim([-0.02, 1.02])
+    plt.ylim([0, 1])
+    ax.fill_between(fpr, 0, tpr)
+    plt.ylabel('True Positive Rate')
+    plt.xlabel('False Positive Rate')
+    plt.show()
