@@ -101,13 +101,13 @@ def execFinding():
 def plot_roc_auc(fpr, tpr, roc_auc):
     '''Plot the ROC-AUC cplot_roc_aucurve'''
     fig, ax = plt.subplots()
-    plt.title('Receiver Operating Characteristic (ROC)')
     plt.plot(fpr, tpr, 'b', label = 'AUC = %0.2f' % roc_auc)
-    plt.legend(loc = 'lower right')
     plt.plot([0, 1], [0, 1],'w--')
-    plt.xlim([-0.02, 1.02])
+    plt.xlim([-0.05, 1.05])
     plt.ylim([0, 1])
     ax.fill_between(fpr, 0, tpr)
-    plt.ylabel('True Positive Rate')
     plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic (ROC)')
+    plt.legend(loc = 'lower right')
     plt.show()

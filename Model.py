@@ -2,11 +2,11 @@ import pandas as pd
 import sklearn as sk
 import seaborn as sns
 import numpy as np
-
-global models_mean_scores
-models_mean_scores = pd.DataFrame()
+from Preprocess import *
+from DataAnalysis import *
 
 from sklearn.model_selection import RandomizedSearchCV, KFold, cross_validate, StratifiedKFold, GridSearchCV
+from sklearn.naive_bayes import GaussianNB
 from sklearn import metrics
 from imblearn.pipeline import Pipeline
 from imblearn.over_sampling import SMOTE
@@ -66,16 +66,16 @@ def ClassifierDecisionTree(X, y):
 
 def ClassifierGradientBoosting(X, y):
     loss = ['deviance', 'exponencial']
-    learning_rate = [0.1, 0.2, 0.4, 0.6]
-    n_estimators = [100, 150, 200]
-    subsample = [1, 0.5, 1.5, 2]
+    learning_rate = [0.1, 0.2, 0.4]
+    n_estimators = [100]
+    subsample = [1, 0.5]
     criterion = ['friedman_mse', 'mse', 'mae']
     min_samples_split = [2, 4, 6]
     min_samples_leaf =  [1, 2, 4, 6]
-    min_weight_fraction_leaf = [0, 1, 2, 3]
-    max_depth = [2, 3, 4, 6]
+    min_weight_fraction_leaf = [0, 1, 2]
+    max_depth = [2, 3, 4]
     max_features = ['auto', 'sqrt']
-    min_impurity_split = [0.05, 0.1, 0.23, 0.3]
+    min_impurity_split = [0.05, 0.1, 0.23]
 
     param_grid = dict(classification__max_depth=max_depth, classification__min_samples_split=min_samples_split, classification__criterion=criterion, classification__loss=loss, classification__max_features=max_features, classification__learning_rate=learning_rate, classification__min_impurity_split=min_impurity_split, classification__min_samples_leaf=min_samples_leaf, classification__n_estimators=n_estimators, classification__subsample=subsample, classification__min_weight_fraction_leaf = min_weight_fraction_leaf)
 
@@ -96,3 +96,27 @@ def recall(tp,fn):
 def f1score(tp,fp,fn):
     return 2*recall(tp,fn)/(recall(tp,fn)+precision(tp,fp))
 
+def model_performance(model, train, test, normalize = False):
+    
+    X_train = train.drop(columns=['status', 'loan_id', 'account_id', "unemploymant rate '95 ", 'card_type', 'name', 'operation_n_credit_card_withdrawal'], axis=1)
+    y_train = train['status'].copy()
+    
+    X_test = test.drop(columns=['status', 'loan_id', 'account_id', "unemploymant rate '95 ", 'card_type', 'name', 'operation_n_credit_card_withdrawal'], axis=1)
+    y_test = test['status'].copy()
+    if normalize:
+        normalize_columns(X_train, X_train.columns)
+        normalize_columns(X_test, X_test.columns)
+
+    model = apply_sampling(model)
+    model.fit(X_train, y_train.astype(int))
+    y_pred = model.predict(X_test)
+    fpr, tpr, _ = metrics.roc_curve(y_test.astype(int), y_pred)
+    auc = metrics.auc(fpr, tpr)
+    tn, fp, fn, tp = metrics.confusion_matrix(y_test.astype(int), y_pred).ravel()
+    print('AUC Score: {}\n\n'.format(auc))
+    print('Accuracy: {}'.format(accuracy(tp,tn,fp,fn)))
+    print('Precision: {}'.format(precision(tp,fp)))
+    print('Recall: {}'.format(recall(tp,fn)))
+    print('F1score: {}'.format(f1score(tp,fp,fn)))
+    
+    plot_roc_auc(fpr, tpr, auc)
